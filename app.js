@@ -9,32 +9,22 @@ const projectRoutes = require('./routes/projectRoutes');
 
 const app = express();
 
-// View engine setup
 app.set('view engine', 'ejs');
 app.set('views', './views');
 
-// Middleware
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
 app.use(express.static('public'));
 
-// Session setup
 app.use(session({
-  secret: 'your-secret-key',
+  secret: 'secret',
   resave: false,
-  saveUninitialized: false,
-  cookie: {
-    secure: false,
-    httpOnly: true,
-    maxAge: 1000 * 60 * 60 * 24
-  }
+  saveUninitialized: false
 }));
 
-// Passport configuration
 app.use(passport.initialize());
 app.use(passport.session());
 
-// Local Strategy
 passport.use(new LocalStrategy(
   {
     usernameField: 'username',
@@ -42,25 +32,20 @@ passport.use(new LocalStrategy(
   },
   (username, password, done) => {
     const user = User.findByUsername(username);
-    
     if (!user) {
-      return done(null, false, { message: 'Username not found' });
+      return done(null, false);
     }
-
     if (!User.verifyPassword(password, user.password)) {
-      return done(null, false, { message: 'Invalid password' });
+      return done(null, false);
     }
-
     return done(null, user);
   }
 ));
 
-// Serialize user
 passport.serializeUser((user, done) => {
   done(null, user.id);
 });
 
-// Deserialize user
 passport.deserializeUser((id, done) => {
   const user = User.findById(id);
   if (user) {
@@ -70,13 +55,11 @@ passport.deserializeUser((id, done) => {
   }
 });
 
-// Make user available in all templates
 app.use((req, res, next) => {
   res.locals.user = req.user || null;
   next();
 });
 
-// Routes
 app.get('/', (req, res) => {
   if (req.isAuthenticated()) {
     return res.redirect('/projects');
@@ -84,13 +67,9 @@ app.get('/', (req, res) => {
   res.redirect('/login');
 });
 
-// User routes (auth)
 app.use('/', userRoutes);
-
-// Project routes
 app.use('/', projectRoutes);
 
-// Handle PUT and DELETE methods via POST
 app.post('/:path(*)', (req, res, next) => {
   if (req.body._method) {
     req.method = req.body._method;
@@ -99,7 +78,6 @@ app.post('/:path(*)', (req, res, next) => {
   next();
 });
 
-// 404 handler
 app.use((req, res) => {
   res.status(404).send('Page not found');
 });
